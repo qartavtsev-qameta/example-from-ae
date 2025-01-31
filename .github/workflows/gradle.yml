@@ -1,35 +1,66 @@
-name: Java CI
+name: Java
 
 on:
-  push:
   workflow_dispatch:
     inputs:
       ALLURE_JOB_RUN_ID:
-        description: "Inner parameter for Allure TestOps"
+        description: ALLURE_JOB_RUN_ID - service parameter (leave blank)
         required: false
       ALLURE_USERNAME:
-        description: "Inner parameter for Allure TestOps"
+        description: ALLURE_USERNAME - service parameter (leave blank)
         required: false
-
-env:
-  ALLURE_JOB_RUN_ID: ${{ github.event.inputs.ALLURE_JOB_RUN_ID }}
+      BROWSER:
+        required: true
+        default: Google Chrome
+      ENDPOINT: 
+        required: true
+        default: Google Chrome
+      OS:
+        required: true
+        default: Windows
+      PROJECT_ID:
+        required: true
+        default: '3111'      
+      VERSION:
+        required: true
+        default: '5.16.0'
 
 jobs:
-  test:
+  tests:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-        cache: 'gradle'
-    - uses: allure-framework/setup-allurectl@v1
-      with:
-        allure-endpoint: https://demo.testops.cloud
-        allure-token: ${{ secrets.ALLURE_TOKEN }}
-        allure-project-id: 1064
-    - name: Run Tests
-      run: allurectl watch -- ./gradlew clean test
-      env:
-        ALLURE_RESULTS: build/allure-results
+      - uses: actions/checkout@v3
+
+      - name: Install Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Get the latest allurectl
+        run: |
+          latest_version=$(curl -s https://api.github.com/repos/allure-framework/allurectl/releases/latest | jq -r .tag_name)
+          echo "ALLURECTL_VERSION=$latest_version" >> $GITHUB_ENV
+
+      - name: Install allurectl
+        uses: allure-framework/setup-allurectl@v1
+        with:
+          allure-endpoint: ${{ inputs.ENDPOINT }}
+          allure-project-id: ${{ inputs.PROJECT_ID }}
+          allure-token: ${{ secrets.ALLURE_TOKEN }}
+          allurectl-version: ${{ env.ALLURECTL_VERSION }}
+
+      - name: Run tests
+        run: |
+          chmod +x ./gradlew 
+          allurectl watch -- ./gradlew clean test
+        env:
+          ALLURE_LAUNCH_NAME: "Test Run #${{ github.run_number }}"
+          ALLURE_RESULTS: "build/allure-results"
+          ALLURE_TESTPLAN_PATH: "./testplan.json"
+          BRANCH: ${{ github.ref_name }}
+          BROWSER: ${{ inputs.BROWSER }}
+          ENDPOINT: ${{ inputs.ENDPOINT }}
+          OS: ${{ inputs.OS }}
+          VERSION: ${{ inputs.VERSION }}

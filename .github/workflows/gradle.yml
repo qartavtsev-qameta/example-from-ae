@@ -14,7 +14,7 @@ on:
         default: Google Chrome
       ENDPOINT: 
         required: true
-        default: Google Chrome
+        default: https://demo.testops.cloud/
       OS:
         required: true
         default: Windows
